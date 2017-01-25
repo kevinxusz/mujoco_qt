@@ -78,9 +78,10 @@ int main(void)
 
    mj_printModel(m,nm);
 
+   int steps = 0, objects_in_scene = 1; //Objects [FREE JOINTS not FIXED to the PLANE] in ur5.xml
    double v_control[8] = {0,0,0,0,0,0,0,0};
    double p_control[8] = {-1,-0.5,0.9,-3.14,-1.57,0.8,-0.025,0.025};//{-1.57,-1.45,1.45,-3.14,-1.46,0.8,-0.025,0.025};
-   for(int c=0; c<m->nv; c++)
+   for(int c=0; c < m->njnt-objects_in_scene; c++)
    {
      d->ctrl[c+8] = p_control[c];
      d->ctrl[c+16] = v_control[c];
@@ -90,17 +91,24 @@ int main(void)
 
    // run simulation for 10 seconds
 
-   int steps=0;
    while( d->time<20)
    {
-       for(int e=0; e<m->nv; e++)
+       for(int e=0; e< m->njnt-objects_in_scene; e++)
        {
-         d->ctrl[e] = d->qfrc_bias[e];
+         d->ctrl[e] = d->qfrc_bias[e+(objects_in_scene*6)];
        }
 
        mj_step(m, d);
 
       steps++;
+	data_file <<endl <<"Step "<<steps <<": "<<endl;
+      for(int cf=0; cf<d->ncon; cf++)
+      {
+          //mj_contactForce(m, d, cf,con_force);
+          data_file <<"Contact "<<cf <<": "<<endl
+                    <<"    Contact between geoms "<<d->contact[cf].geom1<<" & "<<d->contact[cf].geom2<<endl;
+                    //<<"    Force: "<<*con_force<<endl<<endl;
+      }
    }
    /*
    cout<<(m->name_bodyadr)[1]<<endl;
@@ -114,12 +122,12 @@ int main(void)
 
    mj_printData(m, d, nma);
 
-   for (int z=0; z<m->nv; z++)
+   for (int z=0; z< m->njnt-objects_in_scene; z++)
        data_file <<"Joint-"<< z << endl
                  <<"    Goal::Cu.State::SS.Error => "
                  << d->ctrl[z+8] <<"::"
-                 << d->qpos[z] <<"::"
-                 << d->ctrl[z+8] - d->qpos[z]<<"radians"<< endl;
+                 << d->qpos[z+(objects_in_scene*7)] <<"::"
+                 << d->ctrl[z+8] - d->qpos[z+(objects_in_scene*7)]<<"radians"<< endl;
 
    for(int cc=0; cc<d->ncon; cc++)
        data_file <<endl<<"Contact "<<cc <<": "<<endl

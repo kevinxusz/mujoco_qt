@@ -121,13 +121,16 @@ int main(int argc, const char** argv)
 
     // make data
     d = mj_makeData(m);
+    mjtNum* con_force;
     cout<<"No.of Contacts:"<<m->nconmax<<endl;
+    //long steps;
+    int steps = 0,objects_in_scene = 1; //Objects [FREE JOINTS not FIXED to the PLANE] in ur5.xml
     double pos[8] = {-1,-0.5,0.9,-3.14,-1.57,0.8,-0.025,0.025};//{-1.2,-1.45,1.45,-3.14,-1.46,0.8,-0.025,0.025};
     double vel[8] = {0,0,0,0,0,0,0,0};
      /*double goal = 0.9;
     size_t steps = 100;
     size_t counter = 1;*/
-    for(int c=0; c < m->nv; c++)
+    for(int c=0; c < m->njnt-objects_in_scene; c++)
     {
       d->ctrl[c+8] = pos[c];
       d->ctrl[c+16] = vel[c];
@@ -173,21 +176,23 @@ int main(int argc, const char** argv)
               counter++;
             }*/
 
-            for(int e=0; e< m->nv; e++)
+            for(int e=0; e< m->njnt-objects_in_scene; e++)
             {
-              d->ctrl[e] = d->qfrc_bias[e];
+              d->ctrl[e] = d->qfrc_bias[e+(objects_in_scene*6)];
             }
 
             mj_step(m, d);
-        }
+            steps++;
+            cout <<endl <<"Step "<<steps <<": "<<endl;
 
-        for (int z=0; z< m->nv; z++)
-        {
-            cout <<"Joint-"<< z << endl
-                 <<"Goal::Cu.State::SS.Error => ";
-            cout << d->ctrl[z+8] <<"::"
-                 << d->qpos[z] <<"::"
-                 << (d->ctrl[z+8] - d->qpos[z])<<"radians"<< endl;
+            for(int cf=0; cf<d->ncon; cf++)
+              {
+                  //mj_contactForce(m, d, cf,con_force);
+                   cout <<"Contact "<<cf <<": "<<endl
+                        <<"    Contact between geoms "<<d->contact[cf].geom1<<" & "<<d->contact[cf].geom2<<endl;
+                      //<<"    Force: "<<*con_force<<endl<<endl;
+              }
+
         }
 
         // get framebuffer viewport
@@ -204,6 +209,13 @@ int main(int argc, const char** argv)
         // process pending GUI events, call GLFW callbacks
         glfwPollEvents();
     }
+
+    for (int z=0; z< m->njnt-objects_in_scene; z++)
+           cout  <<"Joint-"<< z << endl
+                 <<"    Goal::Cu.State::SS.Error => "
+                 << d->ctrl[z+8] <<"::"
+                 << d->qpos[z+(objects_in_scene*7)] <<"::"
+                 << d->ctrl[z+8] - d->qpos[z+(objects_in_scene*7)]<<"radians"<< endl;
 
     // close GLFW, free visualization storage
     glfwTerminate();
