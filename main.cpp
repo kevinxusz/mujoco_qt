@@ -95,13 +95,13 @@ int main(void)
    {
        for(int e=0; e< m->njnt-objects_in_scene; e++)
        {
-         d->ctrl[e] = d->qfrc_bias[e+(objects_in_scene*6)];
+         d->ctrl[e] = d->qfrc_bias[e+(objects_in_scene*6)]; // 1 free joint adds 6 DOF's
        }
 
        mj_step(m, d);
 
       steps++;
-	data_file <<endl <<"Step "<<steps <<": "<<endl;
+      data_file <<endl <<"Step "<<steps <<": "<<endl;
       for(int cf=0; cf<d->ncon; cf++)
       {
           //mj_contactForce(m, d, cf,con_force);
@@ -126,7 +126,7 @@ int main(void)
        data_file <<"Joint-"<< z << endl
                  <<"    Goal::Cu.State::SS.Error => "
                  << d->ctrl[z+8] <<"::"
-                 << d->qpos[z+(objects_in_scene*7)] <<"::"
+                 << d->qpos[z+(objects_in_scene*7)] <<"::" // 1 free joint adds 7 nq's
                  << d->ctrl[z+8] - d->qpos[z+(objects_in_scene*7)]<<"radians"<< endl;
 
    for(int cc=0; cc<d->ncon; cc++)

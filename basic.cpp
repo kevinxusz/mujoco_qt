@@ -10,6 +10,8 @@
 #include "stdlib.h"
 #include "string.h"
 #include <iostream>
+#include <fstream>
+
 using namespace std;
 
 
@@ -107,8 +109,12 @@ int main(int argc, const char** argv)
         return 0;
     }
 
+    ofstream op_file ("data_frm_basic.txt");
+
     // activate software
     mj_activate("/home/student/mjpro140/bin/mjkey.txt");
+
+    int steps = 0,objects_in_scene = 1; //Objects [FREE JOINTS not FIXED to the PLANE] in ur5.xml
 
     // load and compile model
     char error[1000] = "Could not load binary model";
@@ -116,24 +122,49 @@ int main(int argc, const char** argv)
         m = mj_loadModel(argv[1], 0, 0);
     else
         m = mj_loadXML(argv[1], 0, error, 1000);
+
     if( !m )
+    {
         mju_error_s("Load model error: %s", error);
+        op_file <<error;
+    }
+    else
+    {
+        op_file <<"Model loaded, parsed & converted sucessfully\n"
+                <<endl<<"MODEL_PARAMETERS"<< endl
+                <<"Gen.Coordinates :"<< m->nq <<endl
+                <<"DOF's :"<< m->nv <<endl
+                <<"Bodys :"<< m->nbody <<endl
+                <<"Joints:"<< m->njnt <<endl
+                <<"Ctrl.IP:"<< m->nu <<endl
+                <<"No.of Free Objects:"<< objects_in_scene <<endl<<endl;
+
+        cout<<endl<<"MODEL_PARAMETERS"<< endl
+                  <<"Gen.Coordinates :"<< m->nq <<endl
+                  <<"DOF's :"<< m->nv <<endl
+                  <<"Bodys :"<< m->nbody <<endl
+                  <<"Joints:"<< m->njnt <<endl
+                  <<"Ctrl.IP:"<< m->nu <<endl
+                  <<"No.of Free Objects:"<< objects_in_scene <<endl<<endl;
+    }
 
     // make data
     d = mj_makeData(m);
     mjtNum* con_force;
-    cout<<"No.of Contacts:"<<m->nconmax<<endl;
-    //long steps;
-    int steps = 0,objects_in_scene = 1; //Objects [FREE JOINTS not FIXED to the PLANE] in ur5.xml
+    //cout<<"No.of Contacts:"<<m->nconmax<<endl;
+
+    double start_pose[8]    = {0,0,0,0,0,0,0,0};//{0.5,-0.1,0.2,-2.5,-1,0,-0.05,0.05};{0,0,0,0,0,0,0,0}
     double pos[8] = {-1,-0.5,0.9,-3.14,-1.57,0.8,-0.025,0.025};//{-1.2,-1.45,1.45,-3.14,-1.46,0.8,-0.025,0.025};
     double vel[8] = {0,0,0,0,0,0,0,0};
      /*double goal = 0.9;
     size_t steps = 100;
     size_t counter = 1;*/
+
     for(int c=0; c < m->njnt-objects_in_scene; c++)
     {
       d->ctrl[c+8] = pos[c];
       d->ctrl[c+16] = vel[c];
+      d->qpos[c+(objects_in_scene*7)] = start_pose[c];
     }
 
     // init GLFW
@@ -169,12 +200,6 @@ int main(int argc, const char** argv)
         mjtNum simstart = d->time;
         while( d->time - simstart < 1.0/60.0 &&  d->time < 15)
         {
-            /*if (counter <= steps)
-            {
-              d->ctrl[0+8] = ((double)counter/(double)steps)*goal;
-              //cout << "goal: " << d->ctrl[1] << endl;
-              counter++;
-            }*/
 
             for(int e=0; e< m->njnt-objects_in_scene; e++)
             {
@@ -182,16 +207,17 @@ int main(int argc, const char** argv)
             }
 
             mj_step(m, d);
+
             steps++;
-            cout <<endl <<"Step "<<steps <<": "<<endl;
+            op_file <<endl <<"Step "<<steps <<": "<<endl;
 
             for(int cf=0; cf<d->ncon; cf++)
-              {
-                  //mj_contactForce(m, d, cf,con_force);
-                   cout <<"Contact "<<cf <<": "<<endl
-                        <<"    Contact between geoms "<<d->contact[cf].geom1<<" & "<<d->contact[cf].geom2<<endl;
-                      //<<"    Force: "<<*con_force<<endl<<endl;
-              }
+            {
+                //mj_contactForce(m, d, cf,con_force);
+                 op_file <<"Contact "<<cf <<": "<<endl
+                         <<"    Contact between geoms "<<d->contact[cf].geom1<<" & "<<d->contact[cf].geom2<<endl;
+                       //<<"    Force: "<<*con_force<<endl<<endl;
+            }
 
         }
 
@@ -211,11 +237,19 @@ int main(int argc, const char** argv)
     }
 
     for (int z=0; z< m->njnt-objects_in_scene; z++)
-           cout  <<"Joint-"<< z << endl
-                 <<"    Goal::Cu.State::SS.Error => "
-                 << d->ctrl[z+8] <<"::"
-                 << d->qpos[z+(objects_in_scene*7)] <<"::"
-                 << d->ctrl[z+8] - d->qpos[z+(objects_in_scene*7)]<<"radians"<< endl;
+    {
+         cout  <<"Joint-"<< z << endl
+               <<"    Goal::Cu.State::SS.Error => "
+               << d->ctrl[z+8] <<"::"
+               << d->qpos[z+(objects_in_scene*7)] <<"::"
+               << d->ctrl[z+8] - d->qpos[z+(objects_in_scene*7)]<<"radians"<< endl;
+
+         op_file  <<"Joint-"<< z << endl
+                  <<"    Goal::Cu.State::SS.Error => "
+                  << d->ctrl[z+8] <<"::"
+                  << d->qpos[z+(objects_in_scene*7)] <<"::"
+                  << d->ctrl[z+8] - d->qpos[z+(objects_in_scene*7)]<<"radians"<< endl;
+    }
 
     // close GLFW, free visualization storage
     glfwTerminate();
@@ -226,6 +260,14 @@ int main(int argc, const char** argv)
     mj_deleteData(d);
     mj_deleteModel(m);
     mj_deactivate();
+    op_file.close();
 
     return 1;
 }
+
+/*if (counter <= steps)
+{
+  d->ctrl[0+8] = ((double)counter/(double)steps)*goal;
+  //cout << "goal: " << d->ctrl[1] << endl;
+  counter++;
+}*/

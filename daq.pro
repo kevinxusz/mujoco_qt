@@ -11,9 +11,9 @@ CONFIG -= app_bundle
 
 TEMPLATE = app
 
-SOURCES += main.cpp
+#SOURCES += main.cpp
 #SOURCES += simulate.cpp
-#SOURCES += basic.cpp
+SOURCES += basic.cpp
 
 HEADERS += \
     mujoco.h \
